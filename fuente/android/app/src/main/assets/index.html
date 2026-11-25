@@ -1063,13 +1063,32 @@ function camShow(t,x){const R=document.getElementById("camRes");
  if(t==="codigo"){const url=/^https?:\/\//i.test(x);R.innerHTML=`<div class="crd"><h3>▦ Código leído</h3><div class="ccode">${esc(x)}</div><div class="crow"><button class="btn" data-a="copy">📋 Copiar</button><button class="btn sec2" data-a="share">📤 Compartir</button></div>${url?`<p class="cwarn">Es un enlace: <a href="${esc(x)}">abrir en el navegador</a> (ábrelo solo si confías en él).</p>`:""}</div>`;R.dataset.x=x;return}
  const lines=x.split(/\n+/).map(s=>s.trim()).filter(Boolean);const f=camFound(x);
  R.innerHTML=`<div class="crd"><h3>🔤 Texto leído</h3>${f.length?`<div class="csmall" style="margin-top:0">Encontré en el buscador:</div><div class="cfound">${f.map(n=>`<button data-s="${esc(n)}">🔍 ${esc(n)}</button>`).join("")}</div><div class="csmall">Puedes corregir el texto antes de copiar:</div>`:`<div class="csmall" style="margin-top:0">Puedes corregir el texto antes de copiar:</div>`}<textarea id="camTa" spellcheck="false">${esc(x)}</textarea><div class="crow"><button class="btn" data-a="copy">📋 Copiar todo</button><button class="btn sec2" data-a="share">📤 Compartir</button></div>${lines.length>1?`<div class="csmall">O toca una línea para copiar solo esa:</div><div class="clines">${lines.map(l=>`<button class="cline" data-l="${esc(l)}"><span>${esc(l)}</span><i>📋</i></button>`).join("")}</div>`:""}</div>`}
+let _vocab=null;
+function camVocab(){if(_vocab)return _vocab;_vocab=new Set();const add=s=>norm(clean(s)).split(/[^a-z]+/).forEach(w=>{if(w.length>=3)_vocab.add(w)});for(const d of D){add(d[0]);for(const b of [...d[2],...d[3]])add(b)}"mg ml mcg gramos comprimidos comprimido capsulas capsula horas dias cada tomar gotas jarabe dosis noche manana tarde".split(" ").forEach(w=>_vocab.add(w));return _vocab}
+function camFix(txt){let n=0;const V=camVocab();const UNIT=/^(mg|ml|g|gr|mcg|ug|ui|%|comprimidos?|capsulas?|c[aá]psulas?|horas?|hrs?|d[ií]as?|vez|veces|gotas?|sobres?|tabletas?|puff|inhalaci[oó]n(es)?|ampollas?|cucharadas?|aplicaci[oó]n(es)?)/i;
+ const out=txt.split("\n").map(line=>line.replace(/[^\s]+/g,(tok,off,str)=>{
+  const m=tok.match(/^([(\[]?)(.*?)([.,;:)\]]?)$/);const pre=m[1],core=m[2],post=m[3];if(!core)return tok;
+  const after=str.slice(off+tok.length).trim();
+  // 1) numero con letras parecidas: l0 -> 10, 5O -> 50, 1i -> 11
+  if(/\d/.test(core)&&/^[0-9lIi|!Oo.,\/-]+$/.test(core)&&/[lIi|!Oo]/.test(core)){const f=core.replace(/[lIi|!]/g,"1").replace(/[Oo]/g,"0");n++;return pre+f+post}
+  // 2) letra suelta antes de una unidad: "l comprimido" -> "1 comprimido"
+  if(/^[lIi|]$/.test(core)&&UNIT.test(after)){n++;return pre+"1"+post}
+  // 2b) numero pegado a la unidad: "l0mg" -> "10mg", "5Omg"
+  const u=core.match(/^([0-9lIi|Oo.,]+)(mg|ml|mI|g|mcg|ui|%)$/i);if(u&&/\d/.test(u[1])&&/[lIi|Oo]/.test(u[1])){n++;return pre+u[1].replace(/[lIi|]/g,"1").replace(/[Oo]/g,"0")+u[2].replace("mI","ml")+post}
+  if(/^\d+([.,]\d+)?mI$/.test(core)){n++;return pre+core.replace(/mI$/,"ml")+post}
+  if(core==="mI"&&/\d\s*$/.test(str.slice(0,off))){n++;return pre+"ml"+post}
+  // 3) palabra con 1 o 0 metidos: Kitado1 -> Kitadol (solo si la palabra corregida existe en el buscador)
+  if(/[a-zA-Z]/.test(core)&&/[10]/.test(core)&&!/[2-9]/.test(core)){const opts=[core.replace(/1/g,"l").replace(/0/g,"o"),core.replace(/1/g,"i").replace(/0/g,"o"),core.replace(/1/g,"l").replace(/0/g,"O")];
+   for(const o of opts){if(V.has(norm(o).replace(/[^a-z]/g,""))){n++;return pre+o+post}}}
+  return tok}));
+ return {t:out.join("\n"),n}}
 window.onCamara=(t,x)=>{const R=document.getElementById("camRes");if(document.getElementById("cam").hidden)goTab("cam");
  document.querySelectorAll(".cbig").forEach(b=>b.disabled=false);
  if(t==="leyendo"){R.innerHTML=`<div class="cbusy">⏳ Leyendo la foto…</div>`;return}
  if(t==="cancel"){if(R.querySelector(".cbusy"))R.innerHTML="";return}
  if(t==="error"){R.innerHTML=`<div class="crd"><h3>😕 No se pudo</h3><p style="margin:0">${esc(x)}</p></div>`;return}
  if(!x||!x.trim()){R.innerHTML=`<div class="crd"><h3>😕 No encontré ${t==="codigo"?"un código":"texto"}</h3><p style="margin:0">Intenta de nuevo con más luz, más cerca y que la foto no salga movida.</p></div>`;return}
- camSave(t,x.trim());camShow(t,x.trim());camHistR()};
+ let fixed=0;if(t==="texto"){const r=camFix(x.trim());x=r.t;fixed=r.n}camSave(t,x.trim());camShow(t,x.trim());camHistR();if(fixed)toast(`Corregí ${fixed} confusi${fixed>1?"ones":"ón"} entre 1, l, i y 0, o ✔`)};
 if(!camOK){document.getElementById("camNo").hidden=false;document.querySelectorAll(".cbig").forEach(b=>b.disabled=true)}
 document.getElementById("camTxt").onclick=()=>{if(!camOK)return;document.querySelectorAll(".cbig").forEach(b=>b.disabled=true);document.getElementById("camRes").innerHTML=`<div class="cbusy">📷 Abriendo la cámara…</div>`;setTimeout(()=>document.querySelectorAll(".cbig").forEach(b=>b.disabled=false),4000);Android.leerTexto()};
 document.getElementById("camCod").onclick=()=>{if(!camOK)return;document.querySelectorAll(".cbig").forEach(b=>b.disabled=true);document.getElementById("camRes").innerHTML=`<div class="cbusy">📷 Abriendo el lector de códigos…</div>`;setTimeout(()=>document.querySelectorAll(".cbig").forEach(b=>b.disabled=false),4000);Android.leerCodigo()};

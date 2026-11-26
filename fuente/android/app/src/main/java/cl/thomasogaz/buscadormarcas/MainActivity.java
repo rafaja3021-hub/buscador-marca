@@ -9,6 +9,9 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.Rect;
+import android.util.Base64;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
@@ -29,9 +32,11 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions;
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -128,15 +133,72 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 Uri u = uriFoto();
-                Bitmap bmp = cargarFoto(u, 2600);
+                Bitmap b0 = cargarFoto(u, 2600);
                 int rot = rotacion(u);
-                InputImage img = InputImage.fromBitmap(bmp, rot);
+                if (rot != 0) {
+                    Matrix m = new Matrix();
+                    m.postRotate(rot);
+                    b0 = Bitmap.createBitmap(b0, 0, 0, b0.getWidth(), b0.getHeight(), m, true);
+                }
+                final Bitmap bmp = b0;
+                InputImage img = InputImage.fromBitmap(bmp, 0);
                 runOnUiThread(() -> TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
                         .process(img)
-                        .addOnSuccessListener(t -> enviar("texto", t.getText()))
+                        .addOnSuccessListener(t -> enviarFoto(bmp, t))
                         .addOnFailureListener(e -> enviar("error", "No pude leer el texto. Intenta de nuevo con más luz y más cerca.")));
             } catch (Exception e) {
                 enviar("error", "No pude abrir la foto. Intenta de nuevo.");
+            }
+        }).start();
+    }
+
+
+    private JSONArray caja(Rect r, int w, int h) throws Exception {
+        JSONArray a = new JSONArray();
+        a.put(r.left / (double) w);
+        a.put(r.top / (double) h);
+        a.put(r.width() / (double) w);
+        a.put(r.height() / (double) h);
+        return a;
+    }
+
+    private void enviarFoto(Bitmap b, Text t) {
+        new Thread(() -> {
+            try {
+                int w = b.getWidth(), h = b.getHeight();
+                float sc = Math.min(1f, 1400f / Math.max(w, h));
+                Bitmap chica = sc < 1f ? Bitmap.createScaledBitmap(b, Math.round(w * sc), Math.round(h * sc), true) : b;
+                ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                chica.compress(Bitmap.CompressFormat.JPEG, 72, bo);
+                JSONObject o = new JSONObject();
+                o.put("img", "data:image/jpeg;base64," + Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP));
+                o.put("ar", w / (double) h);
+                o.put("texto", t.getText());
+                JSONArray lineas = new JSONArray();
+                for (Text.TextBlock bl : t.getTextBlocks()) {
+                    for (Text.Line ln : bl.getLines()) {
+                        Rect r = ln.getBoundingBox();
+                        if (r == null) continue;
+                        JSONObject L = new JSONObject();
+                        L.put("t", ln.getText());
+                        L.put("b", caja(r, w, h));
+                        JSONArray es = new JSONArray();
+                        for (Text.Element el : ln.getElements()) {
+                            Rect e = el.getBoundingBox();
+                            if (e == null) continue;
+                            JSONObject E = new JSONObject();
+                            E.put("t", el.getText());
+                            E.put("b", caja(e, w, h));
+                            es.put(E);
+                        }
+                        L.put("e", es);
+                        lineas.put(L);
+                    }
+                }
+                o.put("lineas", lineas);
+                enviar("foto", o.toString());
+            } catch (Exception e) {
+                enviar("texto", t.getText());
             }
         }).start();
     }

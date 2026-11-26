@@ -6,8 +6,8 @@ android {
         applicationId = "cl.thomasogaz.buscadormarcas"
         minSdk = 24
         targetSdk = 35
-        versionCode = 29
-        versionName = "1.28"
+        versionCode = 33
+        versionName = "1.29"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
     buildTypes { release { isMinifyEnabled = false } }

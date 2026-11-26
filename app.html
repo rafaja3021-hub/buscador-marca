@@ -179,6 +179,18 @@ body.nouso .card .uso{display:none}body.nooth .lbl.o,body.nooth .ob{display:none
 .cbusy{text-align:center;padding:22px;font-weight:700;color:var(--mut)}
 .updb{display:flex;align-items:center;gap:10px;background:var(--yel);color:#111;border-radius:16px;padding:12px 14px;margin:12px 0;font-weight:700;font-size:15px}.updb span{flex:1}.updb button,.updb a{border:0;border-radius:12px;background:#111;color:#fff;font:800 14px Figtree,system-ui,sans-serif;padding:9px 12px;cursor:pointer;text-decoration:none;white-space:nowrap}.updb .x{background:none;color:#111;padding:4px 6px;font-size:18px}
 .updb[hidden],.obtn[hidden]{display:none}
+.cphw{overflow:auto;border-radius:14px;border:1px solid var(--line);background:#000;max-height:70vh}
+.cph{position:relative;width:100%}.cph.big{width:230%}
+.cph img{display:block;width:100%;height:auto}
+.cbx{position:absolute;border:2px solid rgba(255,212,0,.9);background:rgba(255,212,0,.18);border-radius:4px;padding:0;margin:0;cursor:pointer;min-height:14px}
+.cbx.on{border-color:#e63946;background:rgba(230,57,70,.35)}
+.cphb{display:flex;gap:8px;margin:8px 0}.cphb .btn{flex:1;margin:0}
+.csel{margin-top:10px;border:2px solid #e63946;border-radius:14px;padding:12px;background:var(--bg)}
+.ccode2{font:800 26px ui-monospace,"Roboto Mono","Droid Sans Mono",monospace;line-height:1.5;word-break:break-all;letter-spacing:2px}
+.ccode2 span{border-radius:4px;padding:0 1px}.ccode2 span.amb{background:var(--yel);color:#111;cursor:pointer;text-decoration:underline dotted}
+.ccode2 .nl{display:block;height:4px}
+.csel input{width:100%;margin-top:8px;font:700 18px ui-monospace,"Roboto Mono",monospace;padding:10px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+.cwords{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.cwords button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 10px;font:700 14px ui-monospace,monospace;cursor:pointer}
 </style>
 </head>
 <body>
@@ -1031,17 +1043,27 @@ render();
 const fmt=x=>(Math.round(x*10)/10).toString().replace(".",",");
 function show(){document.querySelectorAll("#calc [data-show]").forEach(el=>{el.style.display=el.dataset.show.includes(mode)?"":"none"});document.querySelectorAll(".cm").forEach(b=>b.classList.toggle("on",b.dataset.m===mode));calc()}
 function v(id){const x=parseFloat(String($c(id).value).replace(",","."));return isFinite(x)&&x>0?x:0}
+function calcDia(porToma,unidad,porEnvase,envNom,tomas,d,fr){
+ const perDay=porToma*fr;const L=[];
+ const frTxt=fr>=1?`${fmt(fr)} ${fr===1?"vez":"veces"} al día`:fr===0.5?"día por medio":"1 vez a la semana";
+ L.push(`<li>Toma: <b>${fmt(porToma)} ${unidad}</b> ${frTxt}</li>`);
+ if(fr>=1)L.push(`<li>Por día usa: <b>${fmt(perDay)} ${perDay>1&&unidad==="pastilla"?"pastillas":unidad}</b></li>`);
+ if(fr>=1&&fr<=6){const h0=8,step=24/fr;const hs=[...Array(Math.round(fr))].map((_,i)=>{const x=(h0+i*step)%24;return `${String(Math.floor(x)).padStart(2,"0")}:${String(Math.round((x%1)*60)).padStart(2,"0")}`});L.push(`<li>Horario de ejemplo: ${hs.join(" · ")}</li>`)}
+ if(porEnvase&&perDay>0){const dur=Math.floor(porEnvase/perDay+1e-9);L.push(`<li>1 ${envNom} alcanza para <b>${dur} día${dur===1?"":"s"}</b>${fr<1?" aprox.":""}</li>`)}
+ const fin=new Date();fin.setDate(fin.getDate()+d-1);L.push(`<li>Si empieza hoy, termina el <b>${fin.toLocaleDateString("es-CL",{weekday:"long",day:"numeric",month:"long"})}</b></li>`);
+ L.push(`<li>Total de tomas: ${tomas}</li>`);
+ return `<div class="lbl2" style="margin-top:8px">Detalle por día</div><ul>${L.join("")}</ul>`}
 function calc(){const fr=parseFloat($c("c_fr").value),d=v("c_d");let html="";
  if(!d){$c("cres").innerHTML="Ingresa los días de tratamiento.";return}
  const tomas=Math.ceil(fr*d-1e-9);
  if(mode==="p"){const pt=parseFloat($c("c_pt").value),box=v("c_box");const total=Math.ceil(pt*tomas-1e-9);if(!box){$c("cres").innerHTML="Ingresa cuántas pastillas trae la caja.";return}
   const cajas=Math.ceil(total/box);const sobra=cajas*box-total;
-  html=`<div class="lbl2">Necesita</div><div class="big">${cajas} ${cajas===1?"caja":"cajas"}</div><ul><li>${fmt(pt)} pastilla${pt===1?"":"s"} × ${tomas} tomas = <b>${total} pastillas</b></li><li>${cajas} caja${cajas===1?"":"s"} de ${box} = ${cajas*box} pastillas</li><li>Sobran: ${sobra}</li>${pt%1?`<li>Ojo: hay que partir pastillas</li>`:""}</ul>`}
+  html=`<div class="lbl2">Necesita</div><div class="big">${cajas} ${cajas===1?"caja":"cajas"}</div><ul><li>${fmt(pt)} pastilla${pt===1?"":"s"} × ${tomas} tomas = <b>${total} pastillas</b></li><li>${cajas} caja${cajas===1?"":"s"} de ${box} = ${cajas*box} pastillas</li><li>Sobran: ${sobra}</li>${pt%1?`<li>Ojo: hay que partir pastillas</li>`:""}</ul>`+calcDia(pt,pt===1?"pastilla":"pastillas",box,"caja",tomas,d,fr)}
  else{const fv=v("c_fv");if(!fv){$c("cres").innerHTML="Ingresa cuántos ml trae el frasco.";return}
   let ml,extra;if(mode==="g"){const gt=v("c_gt"),gml=v("c_gml")||20;const tg=gt*tomas;ml=tg/gml;extra=`<li>${fmt(gt)} gotas × ${tomas} tomas = <b>${Math.round(tg)} gotas</b></li><li>${Math.round(tg)} gotas ÷ ${fmt(gml)} gotas por ml = <b>${fmt(ml)} ml</b></li>`}
   else{const m=v("c_ml");ml=m*tomas;extra=`<li>${fmt(m)} ml × ${tomas} tomas = <b>${fmt(ml)} ml</b></li>`}
   const fr2=Math.ceil(ml/fv-1e-9);const sob=fr2*fv-ml;
-  html=`<div class="lbl2">Necesita</div><div class="big">${fr2} ${fr2===1?"frasco":"frascos"}</div><ul>${extra}<li>${fr2} frasco${fr2===1?"":"s"} de ${fmt(fv)} ml = ${fmt(fr2*fv)} ml</li><li>Sobran: ${fmt(sob)} ml</li>${mode==="g"?"":"<li>Si es suspensión, recuerda que algunas duran pocos días una vez preparadas</li>"}</ul>`}
+  html=`<div class="lbl2">Necesita</div><div class="big">${fr2} ${fr2===1?"frasco":"frascos"}</div><ul>${extra}<li>${fr2} frasco${fr2===1?"":"s"} de ${fmt(fv)} ml = ${fmt(fr2*fv)} ml</li><li>Sobran: ${fmt(sob)} ml</li>${mode==="g"?"":"<li>Si es suspensión, recuerda que algunas duran pocos días una vez preparadas</li>"}</ul>`+(mode==="g"?calcDia(v("c_gt"),"gotas",fv*(v("c_gml")||20),"frasco",tomas,d,fr)+`<ul><li>${fmt(v("c_gt")*fr)} gotas al día son ${fmt(v("c_gt")*fr/(v("c_gml")||20))} ml</li></ul>`:calcDia(v("c_ml"),"ml",fv,"frasco",tomas,d,fr)+`<ul><li>${fmt(v("c_ml"))} ml = ${fmt(v("c_ml")/5)} cucharadita${v("c_ml")/5===1?"":"s"} de 5 ml (usar la jeringa o vasito dosificador)</li></ul>`)}
  $c("cres").innerHTML=html}
 document.querySelectorAll(".cm").forEach(b=>b.onclick=()=>{mode=b.dataset.m;if(mode==="j"&&v("c_fv")<60)$c("c_fv").value=100;if(mode==="g"&&v("c_fv")>60)$c("c_fv").value=20;show()});
 $c("calc").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
@@ -1059,6 +1081,7 @@ function camFound(txt){const T=" "+norm(txt).replace(/[^a-z0-9]+/g," ")+" ";cons
  for(const d of D){if(d[0].startsWith("Marcas sin")||d[7])continue;test(d[0]);for(const b of [...d[2],...d[3]])test(b);if(out.length>=14)break}return out.slice(0,14)}
 window.camHistR=()=>camHistR();function camHistR(){const L=camGet();const el=document.getElementById("camHist");if(!L.length){el.innerHTML="";return}
  el.innerHTML=`<div class="csmall">Últimas lecturas</div>`+L.map((o,i)=>`<div class="chist"><span>${o.t==="codigo"?"▦":"🔤"}</span><button class="t" data-i="${i}">${esc(o.x.replace(/\s+/g," ").slice(0,80))}</button><button class="c" data-c="${i}" aria-label="Copiar">📋</button></div>`).join("")}
+function camShowInto(el,t,x){const R0=document.getElementById("camRes");const tmp=document.createElement("div");tmp.id="camRes";const saved=R0.id;R0.id="camResX";document.body.appendChild(tmp);camShow(t,x);el.innerHTML=tmp.innerHTML.replace("<h3>🔤 Texto leído</h3>","<h3>🔤 Todo el texto (con correcciones de dosis)</h3>");tmp.remove();R0.id=saved}
 function camShow(t,x){const R=document.getElementById("camRes");
  if(t==="codigo"){const url=/^https?:\/\//i.test(x);R.innerHTML=`<div class="crd"><h3>▦ Código leído</h3><div class="ccode">${esc(x)}</div><div class="crow"><button class="btn" data-a="copy">📋 Copiar</button><button class="btn sec2" data-a="share">📤 Compartir</button></div>${url?`<p class="cwarn">Es un enlace: <a href="${esc(x)}">abrir en el navegador</a> (ábrelo solo si confías en él).</p>`:""}</div>`;R.dataset.x=x;return}
  const lines=x.split(/\n+/).map(s=>s.trim()).filter(Boolean);const f=camFound(x);
@@ -1070,7 +1093,8 @@ function camFix(txt){let n=0;const V=camVocab();const UNIT=/^(mg|ml|g|gr|mcg|ug|
   const m=tok.match(/^([(\[]?)(.*?)([.,;:)\]]?)$/);const pre=m[1],core=m[2],post=m[3];if(!core)return tok;
   const after=str.slice(off+tok.length).trim();
   // 1) numero con letras parecidas: l0 -> 10, 5O -> 50, 1i -> 11
-  if(/\d/.test(core)&&/^[0-9lIi|!Oo.,\/-]+$/.test(core)&&/[lIi|!Oo]/.test(core)){const f=core.replace(/[lIi|!]/g,"1").replace(/[Oo]/g,"0");n++;return pre+f+post}
+  const prev=str.slice(0,off).trim().split(/\s+/).pop()||"";const ctx=UNIT.test(after)||/^(cada|x|por|de)$/i.test(prev);
+  if(ctx&&/\d/.test(core)&&/^[0-9lIi|!Oo.,\/-]+$/.test(core)&&/[lIi|!Oo]/.test(core)){const f=core.replace(/[lIi|!]/g,"1").replace(/[Oo]/g,"0");n++;return pre+f+post}
   // 2) letra suelta antes de una unidad: "l comprimido" -> "1 comprimido"
   if(/^[lIi|]$/.test(core)&&UNIT.test(after)){n++;return pre+"1"+post}
   // 2b) numero pegado a la unidad: "l0mg" -> "10mg", "5Omg"
@@ -1082,7 +1106,33 @@ function camFix(txt){let n=0;const V=camVocab();const UNIT=/^(mg|ml|g|gr|mcg|ug|
    for(const o of opts){if(V.has(norm(o).replace(/[^a-z]/g,""))){n++;return pre+o+post}}}
   return tok}));
  return {t:out.join("\n"),n}}
+
+let camF=null,camSelL=[],camSelTxt="";
+const CYC=[["1","l","I","i"],["0","O","o"],["5","S"]];
+const cycOf=c=>CYC.find(g=>g.includes(c));
+function camSelRender(){const el=document.getElementById("camSel");if(!el)return;
+ document.querySelectorAll(".cbx").forEach(b=>b.classList.toggle("on",camSelL.includes(+b.dataset.l)));
+ if(!camSelTxt){el.innerHTML=`<p class="cwarn" style="margin:8px 0 0">👆 Toca un recuadro amarillo en la foto para elegir lo que quieres copiar. Puedes tocar varios.</p>`;return}
+ const words=camSelL.length===1?camF.lineas[camSelL[0]].e.map(e=>e.t):[];
+ el.innerHTML=`<div class="csel"><div class="csmall" style="margin-top:0">Seleccionado, tal cual aparece en la foto:</div>
+ <div class="ccode2">${[...camSelTxt].map((c,k)=>c==="\n"?'<span class="nl"></span>':`<span ${cycOf(c)?`class="amb" data-k="${k}"`:""}>${esc(c)}</span>`).join("")}</div>
+ ${/[1lIi0Oo5S]/.test(camSelTxt)?`<div class="csmall">Si un carácter amarillo quedó mal, tócalo para cambiarlo (1 → l → I → i, 0 → O → o, 5 ↔ S). Compáralo con la foto.</div>`:""}
+ <input id="camSelIn" value="${esc(camSelTxt.replace(/\n/g," / "))}" aria-label="Editar a mano" spellcheck="false" autocapitalize="off" autocomplete="off">
+ ${words.length>1?`<div class="csmall">O copia solo una parte:</div><div class="cwords">${words.map(w=>`<button data-w="${esc(w)}">${esc(w)}</button>`).join("")}</div>`:""}
+ <div class="crow"><button class="btn" data-sel="copy">📋 Copiar</button><button class="btn sec2" data-sel="clear">✖ Quitar selección</button></div></div>`}
+function camFoto(f){camF=f;camSelL=[];camSelTxt="";const R=document.getElementById("camRes");
+ const boxes=f.lineas.map((L,i)=>{const [x,y,w,hh]=L.b;const pad=0.004;return `<button class="cbx" data-l="${i}" aria-label="${esc(L.t)}" style="left:${((x-pad)*100).toFixed(2)}%;top:${((y-pad)*100).toFixed(2)}%;width:${((w+2*pad)*100).toFixed(2)}%;height:${((hh+2*pad)*100).toFixed(2)}%"></button>`}).join("");
+ R.innerHTML=`<div class="crd"><h3>📷 Toca en la foto lo que quieres copiar</h3><div class="cphb"><button class="btn sec2" data-ph="zoom">🔍 Ampliar foto</button><button class="btn sec2" data-ph="all">Seleccionar todo</button></div><div class="cphw"><div class="cph"><img src="${f.img}" alt="Foto">${boxes}</div></div><div id="camSel"></div></div><div id="camTxtRes"></div>`;
+ camSelRender()}
+document.addEventListener("click",e=>{const R=document.getElementById("camRes");if(!R||!R.contains(e.target))return;
+ const bx=e.target.closest(".cbx");if(bx){const i=+bx.dataset.l;camSelL=camSelL.includes(i)?camSelL.filter(x=>x!==i):[...camSelL,i];camSelL.sort((a,b)=>a-b);camSelTxt=camSelL.map(k=>camF.lineas[k].t).join("\n");camSelRender();return}
+ const ph=e.target.closest("[data-ph]");if(ph){if(ph.dataset.ph==="zoom"){const c=R.querySelector(".cph");c.classList.toggle("big");ph.textContent=c.classList.contains("big")?"🔍 Achicar foto":"🔍 Ampliar foto"}else{camSelL=camF.lineas.map((_,i)=>i);camSelTxt=camSelL.map(k=>camF.lineas[k].t).join("\n");camSelRender()}return}
+ const am=e.target.closest(".ccode2 .amb");if(am){const k=+am.dataset.k;const c=camSelTxt[k];const g=cycOf(c);const n=g[(g.indexOf(c)+1)%g.length];camSelTxt=camSelTxt.slice(0,k)+n+camSelTxt.slice(k+1);camSelRender();return}
+ const w=e.target.closest("[data-w]");if(w){camSelTxt=w.dataset.w;camSelRender();return}
+ const s=e.target.closest("[data-sel]");if(s){if(s.dataset.sel==="copy"){camCopy(camSelTxt);camSave("texto",camSelTxt);camHistR()}else{camSelL=[];camSelTxt="";camSelRender()}}});
+document.addEventListener("input",e=>{if(e.target.id==="camSelIn"){camSelTxt=e.target.value.replace(/ \/ /g,"\n");const v=e.target.value,pos=e.target.selectionStart;const sp=document.querySelector(".ccode2");if(sp)sp.innerHTML=[...camSelTxt].map((c,k)=>c==="\n"?'<span class="nl"></span>':`<span ${cycOf(c)?`class="amb" data-k="${k}"`:""}>${esc(c)}</span>`).join("")}});
 window.onCamara=(t,x)=>{const R=document.getElementById("camRes");if(document.getElementById("cam").hidden)goTab("cam");
+ if(t==="foto"){document.querySelectorAll(".cbig").forEach(b=>b.disabled=false);let f;try{f=JSON.parse(x)}catch(err){f=null}if(!f||!f.lineas||!f.lineas.length){R.innerHTML=`<div class="crd"><h3>😕 No encontré texto</h3><p style="margin:0">Intenta de nuevo con más luz, más cerca y que la foto no salga movida.</p></div>`;return}camFoto(f);const r=camFix((f.texto||"").trim());camSave("texto",r.t);const box=document.createElement("div");document.getElementById("camTxtRes").appendChild(box);const keep=R.innerHTML;camShowInto(box,"texto",r.t);camHistR();return}
  document.querySelectorAll(".cbig").forEach(b=>b.disabled=false);
  if(t==="leyendo"){R.innerHTML=`<div class="cbusy">⏳ Leyendo la foto…</div>`;return}
  if(t==="cancel"){if(R.querySelector(".cbusy"))R.innerHTML="";return}

@@ -1,7 +1,7 @@
 {
-  "v": 32,
-  "min": 29,
+  "v": 33,
+  "min": 33,
   "apk": "https://github.com/rafaja3021-hub/buscador-marca/raw/main/BuscadorMarcas.apk",
-  "notas": "El lector de texto ahora corrige 1, l, i y 0, o confundidos",
-  "fecha": "2026-11-25"
+  "notas": "Cámara: toca en la foto para copiar códigos exactos. Calculadora con detalle por día",
+  "fecha": "2026-11-26"
 }
